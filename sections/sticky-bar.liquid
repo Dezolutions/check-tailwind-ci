@@ -66,7 +66,7 @@
   data-section-id="{{ section.id }}"
   data-trigger-selector="{{ section.settings.trigger_selector_id | strip | escape }}"
 >
-  <div class="section-{{ section.id }} sb-wrapper block">
+  <div class="section-{{ section.id }} sb-wrapper">
     {% if section.settings.product_image != blank %}
       {% render 'image-snippet',
         image: section.settings.product_image,
