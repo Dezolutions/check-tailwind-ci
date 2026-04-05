@@ -33,7 +33,7 @@ jobs:
         run: npm ci
 
       - name: Build Tailwind
-        run: npx @tailwindcss/cli -i ./assets/tailwind.input.css -o ./assets/tailwind.output.css --minify
+        run: npx @tailwindcss/cli -i ./assets/tailwind.input.css -o ./assets/tailwind.output.css
 
       - name: Commit output
         run: |
