@@ -400,6 +400,12 @@
       height: calc(var(--spacing) * 120);
     }
   }
+  .\[\&_svg\]\:size-140 {
+    & svg {
+      width: calc(var(--spacing) * 140);
+      height: calc(var(--spacing) * 140);
+    }
+  }
   .\[\&_svg\]\:size-full {
     & svg {
       width: 100%;
