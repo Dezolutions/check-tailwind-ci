@@ -394,16 +394,10 @@
       stroke: var(--color-black);
     }
   }
-  .\[\&_svg\]\:size-120 {
+  .\[\&_svg\]\:size-160 {
     & svg {
-      width: calc(var(--spacing) * 120);
-      height: calc(var(--spacing) * 120);
-    }
-  }
-  .\[\&_svg\]\:size-140 {
-    & svg {
-      width: calc(var(--spacing) * 140);
-      height: calc(var(--spacing) * 140);
+      width: calc(var(--spacing) * 160);
+      height: calc(var(--spacing) * 160);
     }
   }
   .\[\&_svg\]\:size-full {
