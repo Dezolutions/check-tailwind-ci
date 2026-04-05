@@ -1,0 +1,4 @@
+[environments.dev]
+store = "top-second-store"
+path = "."
+theme-editor-sync = true

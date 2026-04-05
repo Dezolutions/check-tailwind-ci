@@ -1,0 +1,361 @@
+{% liquid
+  assign ss = section.settings
+
+  if section.index == 1
+    assign preload = true
+  else
+    assign preload = false
+  endif
+
+  if section.index <= 2
+    assign loading = 'eager'
+    assign fetchpriority = 'high'
+  else
+    assign loading = 'lazy'
+    assign fetchpriority = 'auto'
+  endif
+%}
+
+{% style %}
+  {% comment %} Section Spacing {% endcomment %}
+  .section-{{ section.id }} {
+    padding-top: {{ ss.padding_top | append: 'px' }};
+    padding-bottom: {{ ss.padding_bottom | append: 'px' }};
+    margin-top: {{ ss.margin_top | append: 'px' }};
+    margin-bottom: {{ ss.margin_bottom | append: 'px' }};
+  }
+  .compare-{{ section.id }} .before,
+  .compare-{{ section.id }} .after{
+    aspect-ratio: {{ section.settings.aspect_ratio_desktop }};
+  }
+  @media screen and (max-width: 750px) {
+    .section-{{ section.id }} {
+      padding-top: {{ ss.padding_top_mobile | append: 'px' }};
+      padding-bottom: {{ ss.padding_bottom_mobile | append: 'px' }};
+      margin-top: {{ ss.margin_top_mobile | append: 'px' }};
+      margin-bottom: {{ ss.margin_bottom_mobile | append: 'px' }};
+    }
+
+    .compare-{{ section.id }} .before,
+    .compare-{{ section.id }} .after{
+      aspect-ratio: {{ section.settings.aspect_ratio_mobile }};
+    }
+  }
+{% endstyle %}
+
+<div class="section-{{ section.id }}">
+  <div style="text-align: {{ ss.alignment }};">
+    {% if ss.title != blank %}
+      <div>{{ ss.title }}</div>
+    {% endif %}
+    {% if ss.text != blank %}
+      <div>{{ ss.text }}</div>
+    {% endif %}
+
+    {% if ss.before_image != blank and ss.after_image != blank %}
+      <div class="compare compare-{{ section.id }}">
+        <div class="before">
+          {% render 'image-snippet',
+            image: ss.before_image,
+            alt: ss.before_image.alt,
+            preload: preload,
+            fetchpriority: fetchpriority,
+            loading: loading
+          %}
+        </div>
+        <div class="after">
+          {% render 'image-snippet',
+            image: ss.after_image,
+            alt: ss.after_image.alt,
+            preload: preload,
+            fetchpriority: fetchpriority,
+            loading: loading
+          %}
+        </div>
+        <div class="compare__divider" aria-hidden="true"></div>
+
+        <input
+          class="compare__range"
+          id="compare-range-{{ section.id }}"
+          type="range"
+          min="0"
+          max="100"
+          value="50"
+          step="1"
+          aria-label="Compare before and after image"
+        >
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<style>
+  .compare-{{ section.id }} {
+    display: grid;
+    position: relative;
+    --pos: 50%;
+    overflow: hidden;
+  }
+
+  .compare-{{ section.id }} > * {
+    grid-area: 1 / 1;
+  }
+
+  .compare-{{ section.id }} .before,
+  .compare-{{ section.id }} .after {
+    width: 100%;
+    height: 100%;
+  }
+  .compare-{{ section.id }} .before img,
+  .compare-{{ section.id }} .after img{
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .compare-{{ section.id }} .before {
+    -webkit-mask: linear-gradient(to right, #000 0, #000 var(--pos), transparent var(--pos), transparent 100%);
+    mask: linear-gradient(to right, #000 0, #000 var(--pos), transparent var(--pos), transparent 100%);
+  }
+
+  .compare-{{ section.id }} .after {
+    -webkit-mask: linear-gradient(to right, transparent 0, transparent var(--pos), #000 var(--pos), #000 100%);
+    mask: linear-gradient(to right, transparent 0, transparent var(--pos), #000 var(--pos), #000 100%);
+  }
+
+  .compare-{{ section.id }} input[type="range"] {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+    z-index: 4;
+    margin: 0;
+  }
+  .compare__divider {
+    position: absolute;
+    top: 0;
+    left: var(--pos);
+    transform: translateX(-50%);
+    width: 2px;
+    height: 100%;
+    background: white;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    z-index: 3;
+  }
+  .compare__divider::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 36px;
+    height: 36px;
+    transform: translate(-50%, -50%);
+    border-radius: 999px;
+    background: white;
+    box-shadow: 0 0 0 1px rgba(0,0,0,.1);
+  }
+  
+  .visually-hidden {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+</style>
+
+<script>
+  const compare = document.querySelector('.compare-{{ section.id }}');
+  const range = compare.querySelector('.compare__range');
+  range.addEventListener('input', () => {
+    compare.style.setProperty('--pos', range.value + '%');
+    range.setAttribute('aria-valuetext', `${range.value}% before`);
+  });
+</script>
+
+{% schema %}
+  {
+    "name": "Before After slider",
+    "tag": "section",
+    "settings": [
+      {
+        "type": "richtext",
+        "id": "title",
+        "label": "Title",
+      },
+      {
+        "type": "richtext",
+        "id": "text",
+        "label": "Text",
+        "default": "<p></p>"
+      },
+      {
+        "type": "text_alignment",
+        "id": "alignment",
+        "label": "Text alignment",
+        "default": "center"
+      },
+      {
+        "type": "header",
+        "content": "Media settings"
+      },
+      {
+        "type": "image_picker",
+        "id": "before_image",
+        "label": "Before image"
+      },
+      {
+        "type": "image_picker",
+        "id": "after_image",
+        "label": "After image"
+      },
+      {
+        "type": "select",
+        "id": "aspect_ratio_desktop",
+        "label": "Aspect ratio desktop",
+        "options": [
+          {
+            "value": "1/1",
+            "label": "1:1"
+          },
+          {
+            "value": "4/3",
+            "label": "4:3"
+          },
+          {
+            "value": "16/9",
+            "label": "16:9"
+          },
+          {
+            "value": "4/2",
+            "label": "4:2"
+          },
+          {
+            "value": "4/1",
+            "label": "4:1"
+          }
+        ],
+        "default": "4/3"
+      },
+      {
+        "type": "select",
+        "id": "aspect_ratio_mobile",
+        "label": "Aspect ratio mobile",
+        "options": [
+          {
+            "value": "1/1",
+            "label": "1:1"
+          },
+          {
+            "value": "4/3",
+            "label": "4:3"
+          },
+          {
+            "value": "9/16",
+            "label": "9:16"
+          },
+          {
+            "value": "3/4",
+            "label": "3:4"
+          }
+        ],
+        "default": "1/1"
+      },
+      {
+        "type": "header",
+        "content": "Section margin"
+      },
+      {
+        "type": "range",
+        "id": "margin_top",
+        "min": 0,
+        "max": 200,
+        "step": 2,
+        "unit": "px",
+        "label": "Margin top",
+        "default": 0
+      },
+      {
+        "type": "range",
+        "id": "margin_bottom",
+        "min": 0,
+        "max": 200,
+        "step": 2,
+        "unit": "px",
+        "label": "Margin bottom",
+        "default": 0
+      },
+      {
+        "type": "range",
+        "id": "margin_top_mobile",
+        "min": 0,
+        "max": 200,
+        "step": 2,
+        "unit": "px",
+        "label": "Margin top mobile",
+        "default": 0
+      },
+      {
+        "type": "range",
+        "id": "margin_bottom_mobile",
+        "min": 0,
+        "max": 200,
+        "step": 2,
+        "unit": "px",
+        "label": "Margin bottom mobile",
+        "default": 0
+      },
+      {
+        "type": "header",
+        "content": "Section padding"
+      },
+      {
+        "type": "range",
+        "id": "padding_top",
+        "min": 0,
+        "max": 200,
+        "step": 2,
+        "unit": "px",
+        "label": "Padding top",
+        "default": 60
+      },
+      {
+        "type": "range",
+        "id": "padding_bottom",
+        "min": 0,
+        "max": 200,
+        "step": 2,
+        "unit": "px",
+        "label": "Padding bottom",
+        "default": 60
+      },
+      {
+        "type": "range",
+        "id": "padding_top_mobile",
+        "min": 0,
+        "max": 200,
+        "step": 2,
+        "unit": "px",
+        "label": "Padding top mobile",
+        "default": 30
+      },
+      {
+        "type": "range",
+        "id": "padding_bottom_mobile",
+        "min": 0,
+        "max": 200,
+        "step": 2,
+        "unit": "px",
+        "label": "Padding bottom mobile",
+        "default": 30
+      }
+    ],
+    "presets": [
+      {
+        "name": "Before After"
+      }
+    ]
+  }
+{% endschema %}

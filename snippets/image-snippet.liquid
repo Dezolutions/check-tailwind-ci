@@ -1,0 +1,51 @@
+{% doc %}
+  @description Image block snippet
+
+  @param {boolean} preload - Preload image true/false
+  @param {string} loading - Image loading lazy/eager
+  @param {string} fetchpriority - Image fethcpriority high/low
+  @param {object} image - Image object
+  @param {string} [alt] - Image alt text
+  @param {string} [class] - Image class name
+  @param {number} [max_width] - Image max width
+
+  @example
+    {% render 'image-snippet', image: image, preload: true, loading: 'lazy', fetchpriority: 'low' %}
+{% enddoc %}
+
+{% assign widths = "200,300,400,600,800,1400,1600,2000" | split: "," %}
+{% assign srcset_values = " " %}
+
+{% if max_width != nil %}
+  {% assign max_width = max_width | plus: 0 %}
+{% else %}
+  {% assign max_width = 1000 %}
+{% endif %}
+
+{% for width in widths %}
+  {% assign width_num = width | plus: 0 %}
+  {% if width_num <= max_width %}
+    {% assign srcset_item = image | image_url: width: width_num | append: " " | append: width | append: "w" %}
+    {% if srcset_values != "" %}
+      {% assign srcset_values = srcset_values | append: ", " %}
+    {% endif %}
+    {% assign srcset_values = srcset_values | append: srcset_item %}
+  {% endif %}
+{% endfor %}
+
+<img src="{{ image | image_url: width: max_width }}"
+    srcset="{{ srcset_values }}"
+    sizes="
+            (max-width: 768px) 600px,
+            (max-width: 992px) 600px,
+            (max-width: 1200px) 900px,
+            {{ max_width }}px"
+    width="{{ max_width }}" height="auto"
+    alt="{{ alt }}"
+    class="{{ class }}"
+    preload="{{ preload }}"
+    fetchpriority="{{ fetchpriority }}"
+    loading="{{ loading }}"
+/>
+
+

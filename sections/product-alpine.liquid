@@ -1,0 +1,115 @@
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+{% liquid
+  assign product = all_products[section.settings.product.handle]
+%}
+
+<section class="container">
+  <p>Product Alpine</p>
+
+  <div
+    x-data="ProductComponent({
+      product: {{ product | json | escape }},
+      variant: {{ product.variants.first | json | escape }},
+      template: 'product',
+      thumbnailsPosition: 'under',
+      showThumbnailsOnMobile: true
+    })"
+    x-init="init()"
+  >
+    <div style="width: 150px;">
+      {{
+        product.featured_image
+        | image_url: width: product.featured_image.width
+        | image_tag:
+            widths: '1024,1600',
+            sizes: '100vw',
+            loading: 'eager',
+            fetchpriority: 'high',
+            preload: true,
+            alt: product.featured_image.alt | default: 'Product image'
+      }}
+    </div>
+    <h2 x-text="product.title" style="font-size:20px;"></h2>
+    <p x-text="addToCartText"></p>
+    <button @click="addToCart" :disabled="loading" style="cursor:pointer;">Add to cart</button>
+  </div>
+</section>
+
+<script>
+  // assets/product.js
+
+window.ProductComponent = ({
+  product,
+  variant,
+  featuredMediaID,
+  template,
+  thumbnailsPosition,
+  showThumbnailsOnMobile
+}) => ({
+  productRoot: null,
+  product: product,
+  currentVariant: variant,
+  currentMediaId: featuredMediaID,
+  loading: false,
+  quantity: 1,
+  data: null,
+
+  get addToCartText() {
+    if (!this.currentVariant) return "Unavailable";
+    if (this.loading) return "Loading...";
+    if (!this.currentVariant.available) return "Sold out";
+    return "Add to Cart";
+  },
+
+  async addToCart() {
+    this.loading = true;
+    try {
+      const response = await fetch('/cart/add.js', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: this.currentVariant.id, quantity: this.quantity }),
+      });
+    
+      const data = await response.json();
+      this.data = data;
+    } catch(e) {
+      console.error(e)
+    } finally {
+      // Dispatch the event with added product data
+      window.dispatchEvent(new CustomEvent('cart:added', {
+        detail: {
+          product: this.data
+        }
+      }));
+    }
+    
+  
+    
+    this.loading = false;
+  },
+
+  init() {
+    this.productRoot = this.$root;
+    // можешь подписываться на события или инициализировать refs
+  }
+});
+
+</script>
+{% schema %}
+  {
+    "name": "Product Alpine",
+    "settings": [
+      {
+        "type": "product",
+        "id": "product",
+        "label": "Product",
+      },
+    ],
+    "presets": [
+      {
+        "name": "Product Alpine"
+      }
+    ]
+  }
+{% endschema %}

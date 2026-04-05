@@ -1,0 +1,42 @@
+name: Build Tailwind
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'assets/tailwind.input.css'
+      - 'assets/fluid-plugin.js'
+      - 'blocks/**'
+      - 'sections/**'
+      - 'snippets/**'
+      - 'layout/**'
+      - 'templates/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Tailwind
+        run: npx @tailwindcss/cli -i ./assets/tailwind.input.css -o ./assets/tailwind.output.css --minify
+
+      - name: Commit output
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add assets/tailwind.output.css
+          git diff --cached --quiet || git commit -m "chore: rebuild tailwind output [skip ci]"
+          git push

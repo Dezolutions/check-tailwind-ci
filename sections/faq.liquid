@@ -1,0 +1,285 @@
+{% liquid
+
+  assign ss = section.settings
+
+  if section.index == 1
+    assign preload = true
+  else
+    assign preload = false
+  endif
+
+  if section.index <= 2
+    assign loading = 'eager'
+    assign fetchpriority = 'high'
+  else
+    assign loading = 'lazy'
+    assign fetchpriority = 'auto'
+  endif
+%}
+
+{% style %}
+  {% comment %} Section Spacing {% endcomment %}
+  .section-{{ section.id }} {
+    padding-top: {{ ss.padding_top | append: 'px' }};
+    padding-bottom: {{ ss.padding_bottom | append: 'px' }};
+    margin-top: {{ ss.margin_top | append: 'px' }};
+    margin-bottom: {{ ss.margin_bottom | append: 'px' }};
+  }
+  @media screen and (max-width: 750px) {
+    .section-{{ section.id }} {
+      padding-top: {{ ss.padding_top_mobile | append: 'px' }};
+      padding-bottom: {{ ss.padding_bottom_mobile | append: 'px' }};
+      margin-top: {{ ss.margin_top_mobile | append: 'px' }};
+      margin-bottom: {{ ss.margin_bottom_mobile | append: 'px' }};
+    }
+  }
+{% endstyle %}
+
+<div class="section-{{ section.id }}">
+  <div style="text-align: {{ ss.alignment }};">
+    {% if ss.title != blank %}
+      <div>{{ ss.title }}</div>
+    {% endif %}
+    {% if ss.text != blank %}
+      <div>{{ ss.text }}</div>
+    {% endif %}
+    <input type="range" id="range" step="0.1">
+
+    {% if ss.before_image != blank and ss.after_image != blank %}
+      <div class="compare">
+        <div class="before">
+          {% render 'image-snippet',
+            image: ss.before_image,
+            alt: ss.before_image.alt,
+            preload: preload,
+            fetchpriority: fetchpriority,
+            loading: loading
+          %}
+        </div>
+        <div class="after">
+          {% render 'image-snippet',
+            image: ss.after_image,
+            alt: ss.after_image.alt,
+            preload: preload,
+            fetchpriority: fetchpriority,
+            loading: loading
+          %}
+        </div>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<style>
+  .compare {
+    display: grid;
+    > * {
+      grid-area: 1 / 1;
+    }
+  }
+
+  .before {
+    mask: linear-gradient(to right, #000 0, var(--pos, 50%), transparent 0);
+  }
+  .after {
+    mask: Linear-gradient(to right, transparent 0, var(--pos, 50%), #000 0);
+  }
+</style>
+
+<script>
+  (() => {
+    const compare = document.querySelector('.compare-{{ section.id }}');
+    if (!compare) return;
+
+    const range = compare.querySelector('input[type="range"]');
+    if (!range) return;
+
+    const update = () => {
+      compare.style.setProperty('--pos', `${range.value}%`);
+    };
+
+    range.addEventListener('input', update);
+    update();
+  })();
+  {% comment %} range.oninput = () => document.body.style.setProperty("--pos", range. value + "g"); {% endcomment %}
+</script>
+
+{% schema %}
+  {
+    "name": "Before After slider",
+    "tag": "section",
+    "settings": [
+      {
+        "type": "richtext",
+        "id": "title",
+        "label": "Title",
+      },
+      {
+        "type": "richtext",
+        "id": "text",
+        "label": "Text",
+        "default": "<p></p>"
+      },
+      {
+        "type": "text_alignment",
+        "id": "alignment",
+        "label": "Text alignment",
+        "default": "center"
+      },
+      {
+        "type": "header",
+        "content": "Media settings"
+      },
+      {
+        "type": "image_picker",
+        "id": "before_image",
+        "label": "Before image"
+      },
+      {
+        "type": "image_picker",
+        "id": "after_image",
+        "label": "After image"
+      },
+      {
+        "type": "header",
+        "content": "Section margin"
+      },
+      {
+        "type": "range",
+        "id": "margin_top",
+        "min": 0,
+        "max": 200,
+        "step": 2,
+        "unit": "px",
+        "label": "Margin top",
+        "default": 0
+      },
+      {
+        "type": "range",
+        "id": "margin_bottom",
+        "min": 0,
+        "max": 200,
+        "step": 2,
+        "unit": "px",
+        "label": "Margin bottom",
+        "default": 0
+      },
+      {
+        "type": "range",
+        "id": "margin_top_mobile",
+        "min": 0,
+        "max": 200,
+        "step": 2,
+        "unit": "px",
+        "label": "Margin top mobile",
+        "default": 0
+      },
+      {
+        "type": "range",
+        "id": "margin_bottom_mobile",
+        "min": 0,
+        "max": 200,
+        "step": 2,
+        "unit": "px",
+        "label": "Margin bottom mobile",
+        "default": 0
+      },
+      {
+        "type": "header",
+        "content": "Section padding"
+      },
+      {
+        "type": "range",
+        "id": "padding_top",
+        "min": 0,
+        "max": 200,
+        "step": 2,
+        "unit": "px",
+        "label": "Padding top",
+        "default": 60
+      },
+      {
+        "type": "range",
+        "id": "padding_bottom",
+        "min": 0,
+        "max": 200,
+        "step": 2,
+        "unit": "px",
+        "label": "Padding bottom",
+        "default": 60
+      },
+      {
+        "type": "range",
+        "id": "padding_top_mobile",
+        "min": 0,
+        "max": 200,
+        "step": 2,
+        "unit": "px",
+        "label": "Padding top mobile",
+        "default": 30
+      },
+      {
+        "type": "range",
+        "id": "padding_bottom_mobile",
+        "min": 0,
+        "max": 200,
+        "step": 2,
+        "unit": "px",
+        "label": "Padding bottom mobile",
+        "default": 30
+      }
+    ],
+    "blocks": [
+      {
+        "type": "title",
+        "name": "Title",
+        "settings": [
+          {
+            "type": "richtext",
+            "id": "title",
+            "label": "Title",
+          }
+        ]
+      },
+      {
+        "type": "faq_item",
+        "name": "FAQ item",
+        "settings": [
+          {
+            "type": "text",
+            "id": "question",
+            "label": "Question"
+          },
+          {
+            "type": "richtext",
+            "id": "answer",
+            "label": "Answer"
+          },
+          {
+            "type": "checkbox",
+            "id": "use_svg",
+            "label": "Use SVG code icon",
+            "default": true
+          },
+          {
+            "type": "liquid",
+            "id": "svg_code_icon",
+            "label": "Icon SVG code",
+            "visible_if": "{{ block.settings.use_svg }}"
+          },
+          {
+            "type": "image_picker",
+            "id": "image_icon",
+            "label": "Image icon",
+            "visible_if": "{{ block.settings.use_svg == false }}"
+          }
+        ]
+      }
+    ],
+    "presets": [
+      {
+        "name": "FAQ"
+      }
+    ]
+  }
+{% endschema %}

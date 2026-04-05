@@ -1,0 +1,94 @@
+{% doc %}
+  @description Review stars snippet
+
+  {% comment %} Text properties {% endcomment %}
+  @param {string} rating_value - Rating value
+  @param {string} [rating_text] - Rating text
+  @param {string} [url] - Anchor or default link
+
+  {% comment %} Icon properties {% endcomment %}
+  @param {boolean} [star_use_svg] - Use SVG icon code or image icon
+  @param {string} [star_svg_code_icon] - SVG code icon
+  @param {string} [star_image_icon] - Image icon shouldnt be filled, will be used as empty star icon
+  @param {string} [star_filled_image_icon] - Image icon filled with color
+  @param {boolean} [preload] - Preload image true/false
+  @param {string} [loading] - Image loading lazy/eager
+  @param {string} [fetchpriority] - Image fethcpriority high/low
+
+  @example
+    {% render 'review-stars',
+      rating_value: block.settings.rating_value,
+      rating_text: block.settings.rating_text,
+      url: block.settings.url,
+      star_use_svg: block.settings.star_use_svg,
+      star_svg_code_icon: block.settings.star_svg_code_icon,
+      star_image_icon: block.settings.star_image_icon
+      star_filled_image_icon: block.settings.star_filled_image_icon,
+      preload: preload,
+      loading: loading,
+      fetchpriority: fetchpriority
+    %}
+{% enddoc %}
+
+{% liquid
+  unless rating_value != ""
+    assign rating_value = rating_value | default: 5
+  endunless
+%}
+
+
+<{% if url != blank %}a href="{{ url }}" {% else %}div{% endif %} class="reviews flex gap-1 lg:gap-2 items-center">
+  <div class="wrapper relative">
+    <div class="flex gap-0.5 md:gap-1">
+      {% for i in (1..5) %}
+        {% if star_use_svg and star_svg_code_icon %}
+          <div class="size-[clamp(14px,1.69vw,28px)] p-px [&_svg]:size-full [&_svg]:overflow-visible [&_path]:fill-none [&_path]:stroke-black">
+            {{ star_svg_code_icon  }}
+          </div>
+        {% elsif star_image_icon %}
+          <div class="size-[clamp(14px,1.69vw,28px)]">
+            {% render 'image-snippet',
+              image: star_image_icon,
+              alt: star_image_icon.alt,
+              preload: preload,
+              fetchpriority: fetchpriority,
+              loading: loading
+            %}
+          </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+    <div data-rating="{{ rating_value }}" style="--rating:{{ rating_value }}" class="reviews-filled overflow-hidden absolute top-0 left-0 flex gap-0.5 md:gap-1">
+      {% for i in (1..5) %}
+        {% if star_use_svg and star_svg_code_icon %}
+          <div class="shrink-0 p-px size-[clamp(14px,1.69vw,28px)] [&_svg]:size-full [&_svg]:overflow-visible">
+            {{ star_svg_code_icon  }}
+          </div>
+        {% elsif star_filled_image_icon %}
+          <div class="shrink-0 size-[clamp(14px,1.69vw,28px)]">
+            {% render 'image-snippet',
+              image: star_filled_image_icon,
+              alt: star_filled_image_icon.alt,
+              preload: preload,
+              fetchpriority: fetchpriority,
+              loading: loading
+            %}
+          </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+  {% if rating_text %}
+    <p class="text-[clamp(14px,1.69vw,28px)] leading-[100%] uppercase text-primary mt-0.5">{{ rating_text }}</p>
+  {% endif %}
+</{% if url != blank %}a{% else %}div{% endif %}>
+
+<style>
+  .reviews-filled {
+    /*works only if wrapper element has specified width, like - 200px; */
+    width: calc((var(--rating) / 5) * 100%);
+
+    /*not fully cross-broswer supported yet*/
+    {% comment %} width: calc-size( min-content, size * calc(attr(data-rating type(<number>)) / 5)); {% endcomment %}
+  }
+</style>

@@ -1,0 +1,348 @@
+{% liquid
+  assign ss = section.settings
+%}
+
+{% style %}
+  .section-{{ section.id }} {
+    padding-top: {{ ss.padding_top | append: 'px' }};
+    padding-bottom: {{ ss.padding_bottom | append: 'px' }};
+  }
+  @media screen and (max-width: 750px) {
+    .section-{{ section.id }} {
+      padding-top: {{ ss.padding_top_mobile | append: 'px' }};
+      padding-bottom: {{ ss.padding_bottom_mobile | append: 'px' }};
+    }
+  }
+{% endstyle %}
+
+<div class="section-{{ section.id }}">
+  {% if ss.csv_url != blank %}
+    <csv-table
+      data-src="{{ ss.csv_url }}"
+      data-header="{{ ss.first_row_as_header }}"
+    ></csv-table>
+  {% elsif ss.csv_data != blank %}
+    {% assign rows = ss.csv_data | strip | split: "\n" %}
+    {% if rows.size > 0 %}
+      {% assign headers = rows[0] | strip | split: "," %}
+      <div class="table-wrapper">
+        <table class="csv-table">
+          {% if ss.first_row_as_header %}
+            <thead>
+              <tr>
+                {% for header in headers %}
+                  <th scope="col">{{ header | strip }}</th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in rows %}
+                {% if forloop.first %}{% continue %}{% endif %}
+                {% assign row_stripped = row | strip %}
+                {% if row_stripped == blank %}{% continue %}{% endif %}
+                <tr>
+                  {% assign cells = row_stripped | split: "," %}
+                  {% for cell in cells %}<td>{{ cell | strip }}</td>{% endfor %}
+                </tr>
+              {% endfor %}
+            </tbody>
+          {% else %}
+            <tbody>
+              {% for row in rows %}
+                {% assign row_stripped = row | strip %}
+                {% if row_stripped == blank %}{% continue %}{% endif %}
+                <tr>
+                  {% assign cells = row_stripped | split: "," %}
+                  {% for cell in cells %}<td>{{ cell | strip }}</td>{% endfor %}
+                </tr>
+              {% endfor %}
+            </tbody>
+          {% endif %}
+        </table>
+      </div>
+    {% endif %}
+  {% else %}
+    {% if request.design_mode %}
+      <p class="table-placeholder">Provide a CSV URL or paste CSV data in section settings.</p>
+    {% endif %}
+  {% endif %}
+</div>
+
+<script>
+  if (!customElements.get('csv-table')) {
+    class CsvTable extends HTMLElement {
+      connectedCallback() {
+        const src = this.dataset.src;
+        if (!src) return;
+        this.useHeader = this.dataset.header !== 'false';
+        this.render(src);
+      }
+
+      render(src) {
+        const { url, type } = this.toFetchTarget(src);
+        fetch(url)
+          .then(res => {
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return res.text();
+          })
+          .then(text => {
+            const { headerRow, dataRows } = type === 'gviz'
+              ? this.parseGviz(text)
+              : this.parseCSV(text);
+            this.innerHTML = '';
+            const wrapper = document.createElement('div');
+            wrapper.className = 'table-wrapper';
+            wrapper.appendChild(this.buildTable(headerRow, dataRows));
+            this.appendChild(wrapper);
+          })
+          .catch(err => {
+            this.innerHTML = `<p class="table-error">Failed to load: ${err.message}</p>`;
+          });
+      }
+
+      toFetchTarget(url) {
+        const match = url.match(/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+        if (!match) return { url, type: 'csv' };
+
+        const id = match[1];
+        const gid = url.match(/[#?&]gid=(\d+)/)?.[1];
+        const gidParam = gid ? `&gid=${gid}` : '';
+
+        if (url.includes('/pub')) {
+          return { url: `https://docs.google.com/spreadsheets/d/${id}/pub?output=csv${gidParam}`, type: 'csv' };
+        }
+        return { url: `https://docs.google.com/spreadsheets/d/${id}/gviz/tq?${gidParam.slice(1)}`, type: 'gviz' };
+      }
+
+      parseGviz(text) {
+        const jsonStr = text.match(/setResponse\((\{[\s\S]+\})\)/)?.[1];
+        if (!jsonStr) throw new Error('Unexpected Google Sheets response');
+        const { table } = JSON.parse(jsonStr);
+        return {
+          headerRow: table.cols.map(c => c.label || c.id),
+          dataRows: (table.rows || []).map(r => (r.c || []).map(cell => cell?.v != null ? String(cell.v) : ''))
+        };
+      }
+
+      parseCSV(text) {
+        const rows = [];
+        let row = [], cell = '', inQuotes = false;
+
+        for (let i = 0; i < text.length; i++) {
+          const ch = text[i], next = text[i + 1];
+          if (inQuotes) {
+            if (ch === '"' && next === '"') { cell += '"'; i++; }
+            else if (ch === '"') { inQuotes = false; }
+            else { cell += ch; }
+          } else {
+            if (ch === '"') { inQuotes = true; }
+            else if (ch === ',') { row.push(cell.trim()); cell = ''; }
+            else if (ch === '\r' || ch === '\n') {
+              if (ch === '\r' && next === '\n') i++;
+              row.push(cell.trim()); cell = '';
+              if (row.some(Boolean)) rows.push(row);
+              row = [];
+            } else { cell += ch; }
+          }
+        }
+        if (cell || row.length) { row.push(cell.trim()); if (row.some(Boolean)) rows.push(row); }
+
+        return this.useHeader
+          ? { headerRow: rows[0] ?? [], dataRows: rows.slice(1) }
+          : { headerRow: null, dataRows: rows };
+      }
+
+      buildTable(headerRow, dataRows) {
+        const table = document.createElement('table');
+        table.className = 'csv-table';
+
+        if (headerRow) {
+          const tr = table.createTHead().insertRow();
+          headerRow.forEach(cell => {
+            const th = document.createElement('th');
+            th.scope = 'col';
+            th.textContent = cell;
+            tr.appendChild(th);
+          });
+        }
+
+        const tbody = table.createTBody();
+        dataRows.forEach(row => {
+          const tr = tbody.insertRow();
+          row.forEach(cell => { tr.insertCell().textContent = cell; });
+        });
+
+        return table;
+      }
+    }
+
+    customElements.define('csv-table', CsvTable);
+  }
+</script>
+
+<style>
+  .table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .csv-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: {{ ss.font_size | append: 'px' }};
+  }
+  .csv-table th,
+  .csv-table td {
+    padding: {{ ss.cell_padding | append: 'px' }};
+    text-align: left;
+    border: 1px solid {{ ss.border_color }};
+  }
+  .csv-table thead th {
+    background-color: {{ ss.header_bg_color }};
+    color: {{ ss.header_text_color }};
+    font-weight: 700;
+  }
+  {% if ss.striped_rows %}
+    .csv-table tbody tr:nth-child(even) {
+      background-color: {{ ss.stripe_color }};
+    }
+  {% endif %}
+  .table-placeholder,
+  .table-loading {
+    color: #999;
+    font-style: italic;
+  }
+  .table-error {
+    color: #c00;
+  }
+</style>
+
+{% schema %}
+{
+  "name": "Table",
+  "tag": "section",
+  "settings": [
+    {
+      "type": "url",
+      "id": "csv_url",
+      "label": "CSV file URL",
+      "info": "Accepts: Shopify Files URL, or any Google Sheets URL (share as Anyone with the link, or File → Share → Publish to web). Tab/sheet is preserved from the URL. Takes priority over pasted data below."
+    },
+    {
+      "type": "textarea",
+      "id": "csv_data",
+      "label": "CSV data (fallback)",
+      "info": "Used only when no URL is provided. Simple format - commas inside quoted cells are not supported."
+    },
+    {
+      "type": "checkbox",
+      "id": "first_row_as_header",
+      "label": "Use first row as header",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Styles"
+    },
+    {
+      "type": "range",
+      "id": "font_size",
+      "min": 12,
+      "max": 24,
+      "step": 1,
+      "unit": "px",
+      "label": "Font size",
+      "default": 14
+    },
+    {
+      "type": "range",
+      "id": "cell_padding",
+      "min": 4,
+      "max": 32,
+      "step": 2,
+      "unit": "px",
+      "label": "Cell padding",
+      "default": 12
+    },
+    {
+      "type": "color",
+      "id": "border_color",
+      "label": "Border color",
+      "default": "#e0e0e0"
+    },
+    {
+      "type": "color",
+      "id": "header_bg_color",
+      "label": "Header background",
+      "default": "#f5f5f5"
+    },
+    {
+      "type": "color",
+      "id": "header_text_color",
+      "label": "Header text color",
+      "default": "#111111"
+    },
+    {
+      "type": "checkbox",
+      "id": "striped_rows",
+      "label": "Striped rows",
+      "default": true
+    },
+    {
+      "type": "color",
+      "id": "stripe_color",
+      "label": "Stripe color",
+      "default": "#fafafa"
+    },
+    {
+      "type": "header",
+      "content": "Section padding"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "min": 0,
+      "max": 100,
+      "step": 2,
+      "unit": "px",
+      "label": "Padding top",
+      "default": 40
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "min": 0,
+      "max": 100,
+      "step": 2,
+      "unit": "px",
+      "label": "Padding bottom",
+      "default": 40
+    },
+    {
+      "type": "range",
+      "id": "padding_top_mobile",
+      "min": 0,
+      "max": 100,
+      "step": 2,
+      "unit": "px",
+      "label": "Padding top mobile",
+      "default": 24
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom_mobile",
+      "min": 0,
+      "max": 100,
+      "step": 2,
+      "unit": "px",
+      "label": "Padding bottom mobile",
+      "default": 24
+    }
+  ],
+  "presets": [
+    {
+      "name": "Table"
+    }
+  ]
+}
+{% endschema %}
