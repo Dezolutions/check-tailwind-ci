@@ -1,0 +1,71 @@
+name: PR Build & Sync
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    # Skip workflow if triggered by bots
+    if: |
+      github.actor != 'github-actions[bot]' &&
+      github.actor != 'shopify[bot]'
+
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout PR branch
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      # Fetch base branch (main)
+      - name: Fetch base branch
+        run: git fetch origin ${{ github.base_ref }}
+
+      # Check for merge conflicts
+      - name: Check for merge conflicts
+        run: |
+          git merge origin/${{ github.base_ref }} --no-commit --no-ff
+
+      # Setup Node.js
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      # Install dependencies
+      - name: Install dependencies
+        run: npm ci
+
+      # Build Tailwind
+      - name: Build Tailwind
+        run: npx @tailwindcss/cli -i ./assets/tailwind.input.css -o ./assets/tailwind.output.css --minify
+
+      # Check if output file changed
+      - name: Check if Tailwind output changed
+        id: diff
+        run: |
+          if git diff --quiet assets/tailwind.output.css; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      # Commit and push only if file changed
+      - name: Commit changes
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add assets/tailwind.output.css
+          git commit -m "chore: rebuild tailwind output [skip ci]"
+          git push origin HEAD:${{ github.head_ref }}
