@@ -23,6 +23,12 @@ jobs:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
 
+      # Configure git identity
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
       # Fetch base branch (main)
       - name: Fetch base branch
         run: git fetch origin ${{ github.base_ref }}
@@ -62,9 +68,6 @@ jobs:
       - name: Commit changes
         if: steps.diff.outputs.changed == 'true'
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
           git add assets/tailwind.output.css
           git commit -m "chore: rebuild tailwind output [skip ci]"
           git push origin HEAD:${{ github.head_ref }}
